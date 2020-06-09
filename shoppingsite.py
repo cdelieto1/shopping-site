@@ -6,7 +6,7 @@ put melons in a shopping cart.
 Authors: Joel Burton, Christian Fernandez, Meggie Mahnken, Katie Byers.
 """
 
-from flask import Flask, render_template, redirect, flash
+from flask import Flask, render_template, redirect, flash, session
 import jinja2
 
 import melons
@@ -51,7 +51,10 @@ def show_melon(melon_id):
     """
 
     melon = melons.get_by_id(melon_id)
-    print(melon)
+    #print(melon)
+
+    print(session)
+
     return render_template("melon_details.html",
                            display_melon=melon)
 
@@ -60,25 +63,39 @@ def show_melon(melon_id):
 def show_shopping_cart():
     """Display content of shopping cart."""
 
-    # TODO: Display the contents of the shopping cart.
+    # Keep track of the total cost of the order
+    order_total = 0
 
-    # The logic here will be something like:
-    #
-    # - get the cart dictionary from the session
-    # - create a list to hold melon objects and a variable to hold the total
-    #   cost of the order
-    # - loop over the cart dictionary, and for each melon id:
-    #    - get the corresponding Melon object
-    #    - compute the total cost for that type of melon
-    #    - add this to the order total
-    #    - add quantity and total cost as attributes on the Melon object
-    #    - add the Melon object to the list created above
-    # - pass the total order cost and the list of Melon objects to the template
-    #
-    # Make sure your function can also handle the case wherein no cart has
-    # been added to the session
+    # Create a list to hold Melon objects corresponding to the melon_id's in
+    # the cart
+    cart_melons = []
 
-    return render_template("cart.html")
+    # Get the cart dictionary out of the session (or an empty one if none
+    # exists yet)
+    cart = session.get("cart", {})
+
+    # Loop over the cart dictionary
+    for melon_id, quantity in cart.items():
+        # Retrieve the Melon object corresponding to this id
+        melon = melons.get_by_id(melon_id)
+
+        # Calculate the total cost for this type of melon and add it to the
+        # overall total for the order
+        total_cost = quantity * melon.price
+        order_total += total_cost
+
+        # Add the quantity and total cost as attributes on the Melon object
+        melon.quantity = quantity
+        melon.total_cost = total_cost
+
+        # Add the Melon object to our list
+        cart_melons.append(melon)
+
+    # Pass the list of Melon objects and the order total to our cart template
+
+    return render_template("cart.html",
+                           cart=cart_melons,
+                           order_total=order_total)
 
 
 @app.route("/add_to_cart/<melon_id>")
@@ -100,7 +117,21 @@ def add_to_cart(melon_id):
     # - flash a success message
     # - redirect the user to the cart page
 
-    return "Oops! This needs to be implemented!"
+    if "cart" in session:
+        cart = session["cart"]
+    else:
+        cart = session.get("cart", {})
+
+    print(cart)
+
+    cart[melon_id] = cart.get(melon_id, 0) + 1 #create the dict of melon:quantity 
+
+    print('this is add to cart')
+    print(cart)
+    print(cart[melon_id])
+    session["cart"] = cart
+
+    return redirect("/cart")
 
 
 @app.route("/login", methods=["GET"])
@@ -117,8 +148,6 @@ def process_login():
     Find the user's login credentials located in the 'request.form'
     dictionary, look up the user, and store them in the session.
     """
-
-    # TODO: Need to implement this!
 
     # The logic here should be something like:
     #
